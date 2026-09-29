@@ -1,5 +1,7 @@
 # alpha-graveyard: automated strategy discovery, and why most discoveries are fake
 
+[![CI](https://github.com/CH4RL3I/alpha-graveyard/actions/workflows/ci.yml/badge.svg)](https://github.com/CH4RL3I/alpha-graveyard/actions/workflows/ci.yml) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![License: MIT](https://img.shields.io/badge/license-MIT-green)
+
 Where discovered strategies go to die. Python package: `stratgen`.
 
 A search engine that finds trading strategies is easy to build. The valuable part is showing,
