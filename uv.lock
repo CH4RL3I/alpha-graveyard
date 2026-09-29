@@ -651,7 +651,7 @@ wheels = [
 [[package]]
 name = "overfit"
 version = "0.1.0"
-source = { git = "https://github.com/CH4RL3I/backtest-overfitting#871c42da5a217e37c019e05e3a078bf6e6b2fe7f" }
+source = { git = "https://github.com/CH4RL3I/fluke#871c42da5a217e37c019e05e3a078bf6e6b2fe7f" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -1093,7 +1093,7 @@ dev = [
 requires-dist = [
     { name = "matplotlib", specifier = ">=3.8" },
     { name = "numpy", specifier = ">=1.26" },
-    { name = "overfit", git = "https://github.com/CH4RL3I/backtest-overfitting" },
+    { name = "overfit", git = "https://github.com/CH4RL3I/fluke" },
     { name = "pandas", specifier = ">=2.1" },
     { name = "scipy", specifier = ">=1.11" },
 ]

@@ -63,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
         fn=_cmd_fetch
     )
     s = sub.add_parser("search", help="random search + GA on the discovery period")
-    s.add_argument("--trials", type=int, default=30000, help="unique candidates to evaluate")
+    s.add_argument("--trials", type=int, default=15000, help="unique candidates to evaluate")
     s.add_argument("--seed", type=int, default=0)
     s.add_argument("--cost-bps", type=float, default=COST_BPS)
     s.add_argument("--out", default="results/search.json.gz")
