@@ -55,11 +55,11 @@ def decay(scatter: dict, s: dict, path: Path) -> None:
 
 
 def equity(curves: dict, path: Path) -> None:
-    fig, ax = plt.subplots(figsize=(8, 4.8))
+    fig, ax = plt.subplots(figsize=(8, 6.6))
     d = curves["dates"]
     palette = ["#e67e22", "#c0392b", "#8e44ad", "#d35400", "#e74c3c"]
     for (name, r), col in zip(curves["top"].items(), palette, strict=False):
-        ax.plot(d, np.cumprod(1 + r), color=col, lw=1.0, alpha=0.8, label=name)
+        ax.plot(d, np.cumprod(1 + r), color=col, lw=1.0, alpha=0.8, label=name[:70])
     base_cols = ["black", BLUE, "#16a085", "#7f8c8d"]
     for (name, r), col in zip(curves["baselines"].items(), base_cols, strict=False):
         ax.plot(d, np.cumprod(1 + r), color=col, lw=2.0, label=name)
@@ -70,7 +70,7 @@ def equity(curves: dict, path: Path) -> None:
         fontsize=10,
         loc="left",
     )
-    ax.legend(frameon=False, fontsize=6.5, loc="upper left", ncol=2)
+    ax.legend(frameon=False, fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.08))
     fig.tight_layout()
     fig.savefig(path)
     plt.close(fig)
@@ -79,7 +79,7 @@ def equity(curves: dict, path: Path) -> None:
 def pbo_hist(pbo, path: Path) -> None:
     fig, ax = plt.subplots(figsize=(7, 4))
     lam = pbo.logits[np.isfinite(pbo.logits)]
-    ax.hist(lam, bins=50, color=GREY, alpha=0.85)
+    ax.hist(lam, bins=25, color=GREY, alpha=0.85)
     ax.axvline(0, color=ACCENT, lw=1.6)
     ax.set_xlabel("Logit of the discovery winner's relative out-of-sample rank")
     ax.set_ylabel(f"CSCV splits (of {pbo.n_combinations:,})")

@@ -16,7 +16,7 @@ dependencies = [
     "pandas>=2.1",
     "scipy>=1.11",
     "matplotlib>=3.8",
-    "overfit @ git+https://github.com/CH4RL3I/backtest-overfitting",
+    "overfit @ git+https://github.com/CH4RL3I/fluke",
 ]
 
 [project.scripts]

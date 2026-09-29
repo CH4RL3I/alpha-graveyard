@@ -23,7 +23,7 @@ from .grammar import Candidate, candidate_from_json, candidate_to_json, describe
 from .search import SearchResult
 
 N_TOP = 10
-PBO_BLOCKS = 16
+PBO_BLOCKS = 10  # C(10,5) = 252 splits; S=16 needs ~15 GB of (splits x N) arrays at this N
 CORR_CAP = 0.9  # a top strategy may not be >0.9 correlated (discovery) with a better one
 
 
@@ -45,11 +45,27 @@ def load_search(path: Path) -> tuple[dict, list[Candidate], list[str]]:
     return p["meta"], [candidate_from_json(c) for c in p["candidates"]], p["stage"]
 
 
+def _sharpe_cols(x: np.ndarray, chunk: int = 2000) -> np.ndarray:
+    """Annualised Sharpe of every column (NaN for constant columns), in float64 chunks."""
+    out = np.empty(x.shape[1])
+    for a in range(0, x.shape[1], chunk):
+        blk = x[:, a : a + chunk].astype(float)
+        sd = blk.std(axis=0, ddof=1)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            out[a : a + chunk] = np.where(sd < 1e-14, np.nan, blk.mean(axis=0) / sd) * np.sqrt(
+                TRADING_DAYS
+            )
+    return out
+
+
 def _distinct_top(is_ret: np.ndarray, is_sr: np.ndarray, eligible: np.ndarray) -> list[int]:
     order = [i for i in np.argsort(-np.where(eligible, is_sr, -np.inf)) if eligible[i]]
     chosen: list[int] = []
     for i in order:
-        if all(abs(np.corrcoef(is_ret[:, i], is_ret[:, j])[0, 1]) < CORR_CAP for j in chosen):
+        if all(
+            abs(np.corrcoef(is_ret[:, i], is_ret[:, j].astype(float))[0, 1]) < CORR_CAP
+            for j in chosen
+        ):
             chosen.append(int(i))
         if len(chosen) == N_TOP:
             break
@@ -58,7 +74,7 @@ def _distinct_top(is_ret: np.ndarray, is_sr: np.ndarray, eligible: np.ndarray) -
 
 def analyse(prices: pd.DataFrame, cands: list[Candidate], meta: dict) -> dict:
     ev = Evaluator(prices, meta["cost_bps"])
-    is_mask = (prices.index < pd.Timestamp(SPLIT_DATE)).to_numpy()
+    is_mask = np.asarray(prices.index < pd.Timestamp(SPLIT_DATE))
     n_is = int(is_mask.sum())
     n_trials = len(cands)
 
@@ -67,10 +83,9 @@ def analyse(prices: pd.DataFrame, cands: list[Candidate], meta: dict) -> dict:
     for j, c in enumerate(cands):
         full[:, j] = ev.returns(c)
         changes[j] = ev.n_changes(c, upto=n_is)
-    is_ret, oos_ret = full[:n_is].astype(float), full[n_is:].astype(float)
+    is_ret, oos_ret = full[:n_is], full[n_is:]
 
-    is_sr = np.array([ann_sharpe(is_ret[:, j]) for j in range(n_trials)])
-    oos_sr = np.array([ann_sharpe(oos_ret[:, j]) for j in range(n_trials)])
+    is_sr, oos_sr = _sharpe_cols(is_ret), _sharpe_cols(oos_ret)
     tradeable = (changes >= MIN_CHANGES) & np.isfinite(is_sr)
     both = tradeable & np.isfinite(oos_sr)
 
@@ -78,15 +93,14 @@ def analyse(prices: pd.DataFrame, cands: list[Candidate], meta: dict) -> dict:
     pbo = cscv_pbo(pd.DataFrame(is_ret[:, tradeable]), n_blocks=PBO_BLOCKS)
 
     # Cross-sectional variance of per-period Sharpe ratios across the trials, for the DSR.
-    per_period = np.array([sharpe_ratio(is_ret[:, j]) for j in np.flatnonzero(tradeable)])
-    sr_var = float(np.nanvar(per_period, ddof=1))
+    sr_var = float(np.nanvar(is_sr[tradeable] / np.sqrt(TRADING_DAYS), ddof=1))
 
     top = _distinct_top(is_ret, is_sr, tradeable)
     bl = baselines(ev)
     bl_is = {k: perf(v[:n_is]) for k, v in bl.items()}
     bl_oos = {k: perf(v[n_is:]) for k, v in bl.items()}
 
-    oos_top_sr_pp = [sharpe_ratio(oos_ret[:, j]) for j in top]
+    oos_top_sr_pp = [sharpe_ratio(oos_ret[:, j].astype(float)) for j in top]
     var_top = float(np.nanvar(oos_top_sr_pp, ddof=1))
     spy_oos = bl_oos["Buy and hold SPY"]["sharpe"]
     rows = []
@@ -99,12 +113,14 @@ def analyse(prices: pd.DataFrame, cands: list[Candidate], meta: dict) -> dict:
                 "asset": c.asset,
                 "is_sharpe": is_sr[j],
                 "oos_sharpe": oos_sr[j],
-                "oos_cagr": perf(oos_ret[:, j])["cagr"],
-                "oos_max_dd": perf(oos_ret[:, j])["max_dd"],
+                "oos_cagr": perf(oos_ret[:, j].astype(float))["cagr"],
+                "oos_max_dd": perf(oos_ret[:, j].astype(float))["max_dd"],
                 "asset_bh_oos_sharpe": asset_oos,
-                "dsr_is": deflated_sharpe_ratio(is_ret[:, j], n_trials, sr_var),
-                "oos_psr0": probabilistic_sharpe_ratio(oos_ret[:, j], 0.0),
-                "oos_dsr_top10": deflated_sharpe_ratio(oos_ret[:, j], len(top), var_top),
+                "dsr_is": deflated_sharpe_ratio(is_ret[:, j].astype(float), n_trials, sr_var),
+                "oos_psr0": probabilistic_sharpe_ratio(oos_ret[:, j].astype(float), 0.0),
+                "oos_dsr_top10": deflated_sharpe_ratio(
+                    oos_ret[:, j].astype(float), len(top), var_top
+                ),
                 "idx": j,
             }
         )
@@ -137,6 +153,9 @@ def analyse(prices: pd.DataFrame, cands: list[Candidate], meta: dict) -> dict:
         "top_decile_mean_is": float(np.nanmean(is_sr[top_decile])),
         "top_decile_mean_oos": float(np.nanmean(oos_sr[top_decile])),
         "n_beating_spy_oos": int(np.sum(oos_sr[both] > spy_oos)),
+        "top10_mean_oos_percentile": float(
+            np.mean([np.mean(oos_sr[both] < oos_sr[j]) for j in top if both[j]])
+        ),
         "pbo": float(pbo.pbo),
         "pbo_prob_loss": float(pbo.prob_loss),
         "pbo_blocks": PBO_BLOCKS,
@@ -148,7 +167,7 @@ def analyse(prices: pd.DataFrame, cands: list[Candidate], meta: dict) -> dict:
         "baselines_oos": bl_oos,
     }
     curves = {
-        "top": {describe_candidate(cands[j]): oos_ret[:, j] for j in top[:5]},
+        "top": {describe_candidate(cands[j]): oos_ret[:, j].astype(float) for j in top[:5]},
         "baselines": {k: v[n_is:] for k, v in bl.items()},
         "dates": prices.index[n_is:],
     }
