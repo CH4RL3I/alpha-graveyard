@@ -66,9 +66,8 @@ def build_panel(raws: dict[str, pd.DataFrame]) -> pd.DataFrame:
     return panel[[(t, f) for t in raws for f in ("open", "close")]]
 
 
-def fetch(data_dir: Path | None = None, sample_dir: Path | None = None) -> pd.DataFrame:
+def fetch(data_dir: Path | None = None) -> pd.DataFrame:
     data_dir = data_dir or root() / "data"
-    sample_dir = sample_dir or root() / "sample"
     (data_dir / "raw").mkdir(parents=True, exist_ok=True)
     raws = {}
     for t in UNIVERSE:
@@ -79,8 +78,6 @@ def fetch(data_dir: Path | None = None, sample_dir: Path | None = None) -> pd.Da
         time.sleep(0.5)
     panel = build_panel(raws)
     write_panel(panel, data_dir / "prices.csv.gz")
-    sample_dir.mkdir(exist_ok=True)
-    write_panel(panel, sample_dir / "prices.csv.gz")
     print(
         f"panel: {len(panel)} common days, {panel.index[0].date()} to {panel.index[-1].date()} "
         f"(fetched {datetime.now(UTC):%Y-%m-%d})"
@@ -101,8 +98,8 @@ def read_panel(path: Path) -> pd.DataFrame:
 
 
 def load_prices() -> pd.DataFrame:
-    """Prefer the local cache in data/, fall back to the committed sample."""
-    for p in (root() / "data" / "prices.csv.gz", root() / "sample" / "prices.csv.gz"):
-        if p.exists():
-            return read_panel(p)
-    raise FileNotFoundError("no price data: run `stratgen fetch` or restore sample/prices.csv.gz")
+    """Read the local price cache written by `stratgen fetch` (prices are not redistributed)."""
+    p = root() / "data" / "prices.csv.gz"
+    if p.exists():
+        return read_panel(p)
+    raise FileNotFoundError("no price data: run `stratgen fetch` first")

@@ -1,11 +1,8 @@
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 
 from stratgen.baselines import baselines
 from stratgen.config import SPLIT_DATE
-from stratgen.data import read_panel
 from stratgen.engine import Evaluator
 from stratgen.report import _distinct_top
 from stratgen.search import run_search
@@ -39,7 +36,7 @@ def test_ga_stage_runs_and_does_not_hurt_best():
 
 
 def test_split_dates_are_disjoint_and_ordered():
-    prices = read_panel(Path(__file__).parents[1] / "sample" / "prices.csv.gz")
+    prices = pd.DataFrame(index=pd.bdate_range("2007-01-03", "2026-09-28"))
     cut = pd.Timestamp(SPLIT_DATE)
     is_idx, oos_idx = prices.index[prices.index < cut], prices.index[prices.index >= cut]
     assert len(is_idx) > 1000 and len(oos_idx) > 1000
