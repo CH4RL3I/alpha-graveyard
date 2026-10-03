@@ -108,9 +108,9 @@ Per-seed summaries are in `results/seed1/` and `results/seed2/`. The top 10 is a
 **Data.** Daily adjusted open and close for SPY, QQQ, IWM, EFA, EEM, TLT, IEF, GLD, DBC, VNQ, HYG
 and LQD from Yahoo Finance's public chart endpoint (no key needed; Stooq now serves a JavaScript
 challenge and cannot be scraped with plain CSV downloads). Open is rescaled by adjclose/close so
-both are total-return adjusted. The common history starts 2007-04-11 (HYG's launch). A 0.5 MB
-processed sample is committed in `sample/`, so `report` reproduces offline. `stratgen fetch`
-refreshes `data/` (gitignored).
+both are total-return adjusted. The common history starts 2007-04-11 (HYG's launch). Prices are
+not redistributed here: `stratgen fetch` downloads them into `data/` (gitignored). The figures and
+`results/` in this repo come from the panel fetched on 2026-09-28.
 
 **Search space.** A rule is a boolean expression over one asset, long when true, flat otherwise.
 Leaves: SMA crossover, lookback return above a threshold, Wilder RSI above/below a level,
@@ -139,14 +139,14 @@ cross-sectional variance of the tradeable candidates' Sharpe ratios.
 
 ```bash
 uv sync
-uv run stratgen fetch                       # optional; sample/ works offline
+uv run stratgen fetch                       # downloads prices into data/
 uv run stratgen search --trials 15000 --seed 0
 uv run stratgen report                      # results/, docs/figures/
 uv run pytest -q && uv run ruff check .
 ```
 
 The search takes a few seconds, the report about 20 seconds. Results depend on the data vintage:
-`sample/` holds the panel used above (through 2026-09-28).
+the numbers above use prices through 2026-09-28; a later fetch extends the held-out period.
 
 ## Limitations
 

@@ -59,9 +59,7 @@ def _cmd_report(a: argparse.Namespace) -> None:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="stratgen", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("fetch", help="download daily OHLCV and write data/ and sample/").set_defaults(
-        fn=_cmd_fetch
-    )
+    sub.add_parser("fetch", help="download daily OHLCV into data/").set_defaults(fn=_cmd_fetch)
     s = sub.add_parser("search", help="random search + GA on the discovery period")
     s.add_argument("--trials", type=int, default=15000, help="unique candidates to evaluate")
     s.add_argument("--seed", type=int, default=0)
